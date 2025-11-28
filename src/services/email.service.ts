@@ -4,6 +4,7 @@
  */
 
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { generateWealthBlueprintPDF, getPDFFilename } from "./pdf.service";
 
 interface EmailConfig {
@@ -50,6 +51,20 @@ interface SendEmailOptions {
   }>;
 }
 
+let resendClient: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is not set");
+  }
+
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+
+  return resendClient;
+}
+
 /**
  * Create email transporter
  * Uses Nodemailer's test account for development (no config needed)
@@ -64,9 +79,9 @@ async function createTransporter() {
     return nodemailer.createTransport(config);
   }
 
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !process.env.RESEND_API_KEY) {
     throw new Error(
-      "Email credentials are missing. Please set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASS."
+      "Email credentials are missing. Please set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASS or RESEND_API_KEY."
     );
   }
 
@@ -84,17 +99,58 @@ async function createTransporter() {
   });
 }
 
+async function sendViaResend(fromEmail: string, options: SendEmailOptions): Promise<void> {
+  const resend = getResendClient();
+
+  console.log("📨 Sending email via Resend API...", {
+    to: options.to,
+    subject: options.subject,
+    hasAttachments: Boolean(options.attachments?.length),
+  });
+
+  const attachments = options.attachments?.map((attachment) => ({
+    filename: attachment.filename,
+    content: attachment.content.toString("base64"),
+  }));
+
+  const response = await resend.emails.send({
+    from: fromEmail,
+    to: options.to,
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+    attachments,
+  });
+
+  console.log("📨 Resend API response:", response);
+}
+
 /**
  * Send email
  */
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
-    const transporter = await createTransporter();
-
     const fromEmail =
       process.env.EMAIL_FROM ||
       process.env.EMAIL_USER ||
       "noreply@myrtlewealth.com";
+
+    if (process.env.RESEND_API_KEY) {
+      await sendViaResend(fromEmail, options);
+      console.log("✅ Email sent via Resend API:", {
+        to: options.to,
+        subject: options.subject,
+      });
+      return true;
+    }
+
+    const transporter = await createTransporter();
+    console.log("📨 Sending email via SMTP/Nodemailer...", {
+      to: options.to,
+      subject: options.subject,
+      host: (transporter as any).options?.host,
+      port: (transporter as any).options?.port,
+    });
     const mailOptions: any = {
       from: `"Myrtle Wealth" <${fromEmail}>`,
       to: options.to,
@@ -324,6 +380,11 @@ export async function sendOnboardingEmail(
  */
 export async function testEmailConfiguration(): Promise<boolean> {
   try {
+    if (process.env.RESEND_API_KEY) {
+      console.log("✅ Email server is ready (Resend API)");
+      return true;
+    }
+
     const transporter = await createTransporter();
     await transporter.verify();
     

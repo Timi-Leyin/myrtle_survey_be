@@ -48,7 +48,9 @@ const submitQuestionnaireSchema = z.object({
       Q12: answerSchema,
       Q13: answerSchema,
       Q14: answerSchema,
+      Q15: z.string().optional(), // Source of funds (text field)
     }),
+    advisorQuestion: z.string().optional(), // Optional advisor question
   }),
 });
 

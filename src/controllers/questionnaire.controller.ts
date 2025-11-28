@@ -27,6 +27,7 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
       maritalStatus,
       dependantsCount,
       answers,
+      advisorQuestion,
     } = req.body;
     
     console.log(`   User: ${fullName} (${email})`);
@@ -44,13 +45,22 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
       return;
     }
 
-    // Filter out any extra questions beyond Q1-Q14
+    // Filter scoring questions (Q1-Q14) - Q15 is stored but not scored
     const filteredAnswers: Record<string, string> = {};
     requiredQuestions.forEach((q) => {
       if (answers[q]) {
         filteredAnswers[q] = answers[q];
       }
     });
+
+    // Build complete answers object including Q15 and advisorQuestion for storage
+    const allAnswers: Record<string, any> = { ...filteredAnswers };
+    if (answers.Q15) {
+      allAnswers.Q15 = answers.Q15; // Source of funds (text)
+    }
+    if (advisorQuestion) {
+      allAnswers.advisorQuestion = advisorQuestion; // Optional advisor question
+    }
 
     // Validate answer format (A, B, C, or D) - only for Q1-Q14
     const validAnswers = ["A", "B", "C", "D"];
@@ -101,8 +111,8 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
         address,
         maritalStatus,
         dependantsCount: parseInt(dependantsCount, 10),
-        // Questionnaire Answers (only Q1-Q14)
-        answers: filteredAnswers as any, // PostgreSQL JSON field - Prisma handles serialization
+        // Questionnaire Answers (Q1-Q14 for scoring, Q15 and advisorQuestion stored as text)
+        answers: allAnswers as any, // PostgreSQL JSON field - Prisma handles serialization
         // Analysis Results
         netWorth: scoringResult.netWorth,
         netWorthBand: scoringResult.netWorthBand,

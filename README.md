@@ -52,6 +52,7 @@ EMAIL_SECURE=false # set true if you use port 465
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
 EMAIL_FROM="Myrtle Wealth <noreply@myrtlewealth.com>"
+RESEND_API_KEY=your-resend-secret-key # optional - use Resend API on hosts that block SMTP
 ```
 
 **Note**: Replace `[YOUR-PASSWORD]` with the actual Supabase database password. The pooling URL is used by the application at runtime, while the direct URL is used for Prisma migrations and Studio.
@@ -172,6 +173,7 @@ src/
 | `EMAIL_USER` | SMTP username | - |
 | `EMAIL_PASS` | SMTP password | - |
 | `EMAIL_FROM` | From email/name. Defaults to `EMAIL_USER` | - |
+| `RESEND_API_KEY` | Secret key for Resend transactional email API (use instead of SMTP on restricted hosts) | - |
 
 ## 🧪 Testing
 

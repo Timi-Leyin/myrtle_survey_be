@@ -24,7 +24,7 @@ model Questionnaire {
   maritalStatus   String
   dependantsCount Int
   // Questionnaire Answers
-  answers         Json     // JSON object of answers (Q1-Q14)
+  answers         Json     // JSON object of answers (Q1-Q14 for scoring, Q15 and advisorQuestion as text)
   // Analysis Results
   netWorth        Float
   netWorthBand    String
