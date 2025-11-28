@@ -16,6 +16,28 @@ interface EmailConfig {
   };
 }
 
+const REQUIRED_EMAIL_ENV = ["EMAIL_USER", "EMAIL_PASS"] as const;
+
+function hasSMTPConfig(): boolean {
+  return REQUIRED_EMAIL_ENV.every((key) => Boolean(process.env[key]));
+}
+
+function buildSMTPConfig(): EmailConfig {
+  const port = parseInt(process.env.EMAIL_PORT || "587", 10);
+  const secureEnv = process.env.EMAIL_SECURE?.toLowerCase();
+  const secure = secureEnv ? secureEnv === "true" : port === 465;
+
+  return {
+    host: process.env.EMAIL_HOST || "smtp.gmail.com",
+    port,
+    secure,
+    auth: {
+      user: process.env.EMAIL_USER as string,
+      pass: process.env.EMAIL_PASS as string,
+    },
+  };
+}
+
 interface SendEmailOptions {
   to: string;
   subject: string;
@@ -34,24 +56,23 @@ interface SendEmailOptions {
  * Falls back to SMTP if credentials are provided
  */
 async function createTransporter() {
-  // If email credentials are provided, use SMTP
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    const config: EmailConfig = {
-      host: process.env.EMAIL_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.EMAIL_PORT || "587", 10),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    };
+  if (hasSMTPConfig()) {
+    const config = buildSMTPConfig();
+    console.log(
+      `📧 Using configured SMTP server (${config.host}:${config.port}, secure=${config.secure})`
+    );
     return nodemailer.createTransport(config);
   }
 
-  // Otherwise, use Nodemailer's test account (fake SMTP for development)
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Email credentials are missing. Please set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASS."
+    );
+  }
+
   console.log("📧 Using Nodemailer test account (development mode - no config needed)");
   const testAccount = await nodemailer.createTestAccount();
-  
+
   return nodemailer.createTransport({
     host: "smtp.ethereal.email",
     port: 587,
@@ -69,8 +90,11 @@ async function createTransporter() {
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
     const transporter = await createTransporter();
-    
-    const fromEmail = process.env.EMAIL_USER || "noreply@myrtlewealth.com";
+
+    const fromEmail =
+      process.env.EMAIL_FROM ||
+      process.env.EMAIL_USER ||
+      "noreply@myrtlewealth.com";
     const mailOptions: any = {
       from: `"Myrtle Wealth" <${fromEmail}>`,
       to: options.to,

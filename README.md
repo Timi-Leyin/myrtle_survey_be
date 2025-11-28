@@ -48,8 +48,10 @@ DIRECT_URL="postgresql://postgres.nyyddimlifvdwhgotjnp:[YOUR-PASSWORD]@aws-1-eu-
 
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
+EMAIL_SECURE=false # set true if you use port 465
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
+EMAIL_FROM="Myrtle Wealth <noreply@myrtlewealth.com>"
 ```
 
 **Note**: Replace `[YOUR-PASSWORD]` with the actual Supabase database password. The pooling URL is used by the application at runtime, while the direct URL is used for Prisma migrations and Studio.
@@ -166,8 +168,10 @@ src/
 | `DIRECT_URL` | Supabase direct connection URL | `postgresql://postgres.nyyddimlifvdwhgotjnp:[YOUR-PASSWORD]@aws-1-eu-west-3.pooler.supabase.com:5432/postgres` |
 | `EMAIL_HOST` | SMTP host | - |
 | `EMAIL_PORT` | SMTP port | `587` |
+| `EMAIL_SECURE` | Use TLS (true/false). Defaults to `true` for port 465, otherwise `false`. | - |
 | `EMAIL_USER` | SMTP username | - |
 | `EMAIL_PASS` | SMTP password | - |
+| `EMAIL_FROM` | From email/name. Defaults to `EMAIL_USER` | - |
 
 ## 🧪 Testing
 
