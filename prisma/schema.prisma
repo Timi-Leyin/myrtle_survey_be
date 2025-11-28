@@ -34,6 +34,8 @@ model Questionnaire {
   portfolio       Json     // JSON object of portfolio
   narrative       String   @db.Text
   createdAt       DateTime @default(now())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
 }
 
 model Admin {
@@ -43,5 +45,22 @@ model Admin {
   password  String   // Hashed password
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model User {
+  id              String          @id @default(uuid())
+  fullName        String
+  email           String          @unique
+  phone           String
+  gender          String
+  dateOfBirth     DateTime
+  occupation      String
+  address         String
+  maritalStatus   String
+  dependantsCount Int
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  questionnaires  Questionnaire[]
 }
 
