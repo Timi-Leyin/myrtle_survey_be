@@ -4,8 +4,9 @@
  */
 
 import nodemailer from "nodemailer";
-import { Resend } from "resend";
-import { generateWealthBlueprintPDF, getPDFFilename } from "./pdf.service";
+import fetch from "node-fetch";
+import { NETWORTH_MIDPOINTS } from "../utils/networth.config";
+import { getQuestionLabel, getPersonaNarrative } from "../utils/question-labels";
 
 interface EmailConfig {
   host: string;
@@ -51,19 +52,7 @@ interface SendEmailOptions {
   }>;
 }
 
-let resendClient: Resend | null = null;
-
-function getResendClient(): Resend {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY is not set");
-  }
-
-  if (!resendClient) {
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
-
-  return resendClient;
-}
+const PLUNK_URL = "https://api.useplunk.com/v1/send";
 
 /**
  * Create email transporter
@@ -79,9 +68,9 @@ async function createTransporter() {
     return nodemailer.createTransport(config);
   }
 
-  if (process.env.NODE_ENV === "production" && !process.env.RESEND_API_KEY) {
+  if (process.env.NODE_ENV === "production" && !process.env.PLUNK_API_KEY) {
     throw new Error(
-      "Email credentials are missing. Please set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASS or RESEND_API_KEY."
+      "Email credentials are missing. Please set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASS or PLUNK_API_KEY."
     );
   }
 
@@ -99,30 +88,63 @@ async function createTransporter() {
   });
 }
 
-async function sendViaResend(fromEmail: string, options: SendEmailOptions): Promise<void> {
-  const resend = getResendClient();
+async function sendViaPlunk(options: SendEmailOptions): Promise<void> {
+  if (!process.env.PLUNK_API_KEY) {
+    throw new Error("PLUNK_API_KEY is not set");
+  }
 
-  console.log("📨 Sending email via Resend API...", {
+  console.log("📨 Sending email via Plunk API...", {
     to: options.to,
     subject: options.subject,
     hasAttachments: Boolean(options.attachments?.length),
   });
 
-  const attachments = options.attachments?.map((attachment) => ({
-    filename: attachment.filename,
-    content: attachment.content.toString("base64"),
-  }));
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${process.env.PLUNK_API_KEY}`,
+    "Content-Type": "application/json",
+  };
 
-  const response = await resend.emails.send({
-    from: fromEmail,
+  // Prepare payload matching Java example
+  const payload: any = {
     to: options.to,
     subject: options.subject,
-    html: options.html,
-    text: options.text,
-    attachments,
+    body: options.html, // Plunk uses 'body' for HTML content
+  };
+
+  // Add text version if provided
+  if (options.text) {
+    payload.text = options.text;
+  }
+
+  // Add attachments if provided (base64 encoded)
+  if (options.attachments && options.attachments.length > 0) {
+    payload.attachments = options.attachments.map((attachment) => ({
+      filename: attachment.filename,
+      content: attachment.content.toString("base64"),
+      contentType: attachment.contentType,
+    }));
+  }
+
+  const response = await fetch(PLUNK_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
   });
 
-  console.log("📨 Resend API response:", response);
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    console.error("📨 Plunk API error response:", responseData);
+    throw new Error(
+      `Plunk API error (${response.status}): ${JSON.stringify(responseData)}`
+    );
+  }
+
+  console.log("📨 Plunk API response:", {
+    status: response.status,
+    statusText: response.statusText,
+    data: responseData,
+  });
 }
 
 /**
@@ -135,9 +157,9 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
       process.env.EMAIL_USER ||
       "noreply@myrtlewealth.com";
 
-    if (process.env.RESEND_API_KEY) {
-      await sendViaResend(fromEmail, options);
-      console.log("✅ Email sent via Resend API:", {
+    if (process.env.PLUNK_API_KEY) {
+      await sendViaPlunk(options);
+      console.log("✅ Email sent via Plunk API:", {
         to: options.to,
         subject: options.subject,
       });
@@ -210,9 +232,38 @@ export async function sendOnboardingEmail(
     persona: string;
     portfolio: Record<string, any>;
   },
-  submissionId: string
+  submissionId: string,
+  answers?: Record<string, string>
 ): Promise<boolean> {
-  const subject = "🌿 Your Myrtle Wealth Blueprint is Ready!";
+  const subject = "🌿 MYRTLE WEALTH BLUEPRINT™ — Personalized Client Narrative";
+  
+  // Calculate midpoints and get labels from answers
+  const q4Mid = answers?.Q4 ? NETWORTH_MIDPOINTS.Q4[answers.Q4 as keyof typeof NETWORTH_MIDPOINTS.Q4] || 0 : 0;
+  const q5Mid = answers?.Q5 ? NETWORTH_MIDPOINTS.Q5[answers.Q5 as keyof typeof NETWORTH_MIDPOINTS.Q5] || 0 : 0;
+  const q6Mid = answers?.Q6 ? NETWORTH_MIDPOINTS.Q6[answers.Q6 as keyof typeof NETWORTH_MIDPOINTS.Q6] || 0 : 0;
+  const q7Mid = answers?.Q7 ? NETWORTH_MIDPOINTS.Q7[answers.Q7 as keyof typeof NETWORTH_MIDPOINTS.Q7] || 0 : 0;
+  
+  const formatCurrency = (value: number) => `₦${value.toLocaleString("en-NG")}`;
+  
+  const q8Label = answers?.Q8 ? getQuestionLabel("Q8", answers.Q8) : "";
+  const q9Label = answers?.Q9 ? getQuestionLabel("Q9", answers.Q9) : "";
+  const q10Label = answers?.Q10 ? getQuestionLabel("Q10", answers.Q10) : "";
+  const q14Label = answers?.Q14 ? getQuestionLabel("Q14", answers.Q14) : "";
+  
+  // Format portfolio allocation
+  const portfolioParts: string[] = [];
+  if (analysisData.portfolio.cash) portfolioParts.push(`${analysisData.portfolio.cash}% Cash`);
+  if (analysisData.portfolio.income) portfolioParts.push(`${analysisData.portfolio.income}% Income`);
+  if (analysisData.portfolio.growth) portfolioParts.push(`${analysisData.portfolio.growth}% Growth`);
+  if (analysisData.portfolio.fx) portfolioParts.push(`${analysisData.portfolio.fx}% FX`);
+  if (analysisData.portfolio.alternatives) portfolioParts.push(`${analysisData.portfolio.alternatives}% Alternatives`);
+  const portfolioAllocation = portfolioParts.length > 0 ? portfolioParts.join(" • ") : "Custom allocation based on your unique profile";
+  
+  // Get net worth band label
+  const netWorthBandLabel = analysisData.netWorthBand.split("-")[1] || analysisData.netWorthBand;
+  
+  // Get persona narrative
+  const personaNarrative = getPersonaNarrative(analysisData.persona);
   
   const html = `
     <!DOCTYPE html>
@@ -223,9 +274,9 @@ export async function sendOnboardingEmail(
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          line-height: 1.6;
+          line-height: 1.8;
           color: #333;
-          max-width: 600px;
+          max-width: 700px;
           margin: 0 auto;
           padding: 20px;
           background-color: #f5f5f5;
@@ -233,102 +284,226 @@ export async function sendOnboardingEmail(
         .container {
           background-color: #ffffff;
           border-radius: 8px;
-          padding: 30px;
+          padding: 40px;
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .header {
           text-align: center;
-          margin-bottom: 30px;
+          margin-bottom: 40px;
+          border-bottom: 2px solid #27dc85;
+          padding-bottom: 20px;
         }
         .logo {
           color: #27dc85;
-          font-size: 24px;
+          font-size: 28px;
           font-weight: bold;
           margin-bottom: 10px;
         }
-        .greeting {
-          font-size: 18px;
-          margin-bottom: 20px;
+        .tagline {
+          color: #666;
+          font-size: 14px;
+          font-style: italic;
+          margin-top: 5px;
         }
-        .content {
+        h1 {
+          color: #333;
+          font-size: 24px;
+          margin: 20px 0;
+        }
+        h2 {
+          color: #27dc85;
+          font-size: 20px;
+          margin-top: 30px;
+          margin-bottom: 15px;
+          border-left: 4px solid #27dc85;
+          padding-left: 15px;
+        }
+        .section {
+          margin: 25px 0;
+        }
+        .highlight {
+          color: #27dc85;
+          font-weight: bold;
+        }
+        ul {
+          margin: 15px 0;
+          padding-left: 25px;
+        }
+        li {
+          margin: 8px 0;
+        }
+        .net-worth-breakdown {
           background-color: #f9f9f9;
           padding: 20px;
           border-radius: 6px;
+          margin: 15px 0;
+        }
+        .portfolio-box {
+          background-color: #f0f9f5;
+          border-left: 4px solid #27dc85;
+          padding: 20px;
           margin: 20px 0;
-          white-space: pre-wrap;
-          font-family: monospace;
+          border-radius: 4px;
         }
         .footer {
-          margin-top: 30px;
+          margin-top: 40px;
           padding-top: 20px;
           border-top: 1px solid #eee;
           text-align: center;
           color: #666;
           font-size: 14px;
         }
-        .button {
-          display: inline-block;
-          padding: 12px 24px;
-          background-color: #27dc85;
-          color: #ffffff;
-          text-decoration: none;
-          border-radius: 6px;
-          margin: 20px 0;
-          font-weight: bold;
-        }
-        .highlight {
-          color: #27dc85;
-          font-weight: bold;
+        .next-steps {
+          background-color: #fff9e6;
+          border-left: 4px solid #ffc107;
+          padding: 20px;
+          margin: 30px 0;
+          border-radius: 4px;
         }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">🌿 Myrtle Wealth</div>
-          <h1>Your Wealth Blueprint is Ready!</h1>
+          <div class="logo">🌿 MYRTLE WEALTH BLUEPRINT™</div>
+          <div class="tagline">Reimagining Wealth. Building Prosperity Together.</div>
         </div>
         
-        <div class="greeting">
-          <p>Dear ${fullName},</p>
-          <p>Thank you for completing the Myrtle Wealth Blueprint Questionnaire!</p>
-        </div>
+        <h1>Personalized Client Narrative</h1>
         
-        <p>We've analyzed your responses and created a personalized wealth blueprint just for you.</p>
-        
-        <div class="content">
-          <strong>Your Financial Profile:</strong>
+        <div class="section">
+          <h2>1. Your Financial Identity — Who You Are Today</h2>
+          <p>Based on the information you shared, you fall into the <span class="highlight">${analysisData.persona}</span> segment.</p>
+          <p><strong>What this means in simple language:</strong></p>
           <ul>
-            <li><strong>Persona:</strong> <span class="highlight">${analysisData.persona}</span></li>
-            <li><strong>Net Worth Band:</strong> <span class="highlight">${analysisData.netWorthBand}</span></li>
-            <li><strong>Risk Profile:</strong> <span class="highlight">${analysisData.riskProfile}</span></li>
+            <li><strong>Everyday Builder:</strong> You are in your foundational building phase — strengthening your income base, forming strong money habits, and preparing for bigger financial moves.</li>
+            <li><strong>Strategic Achiever:</strong> You are in your growth decade — expanding income streams, planning the future with intention, and building wealth structures that must work long-term.</li>
+            <li><strong>Private Wealth Niche:</strong> You manage significant assets and decisions. Your focus is on preservation, legacy, governance, tax efficiency, and intergenerational continuity.</li>
+          </ul>
+          <p>This gives us clarity on how best to serve you and which financial solutions will create the most meaningful impact.</p>
+        </div>
+        
+        <div class="section">
+          <h2>2. Your Net Worth Position — A Clear Picture</h2>
+          <p>From your responses:</p>
+          <div class="net-worth-breakdown">
+            <ul>
+              <li><strong>Cash &amp; Investments:</strong> ${formatCurrency(q4Mid)}</li>
+              <li><strong>Real Estate:</strong> ${formatCurrency(q5Mid)}</li>
+              <li><strong>Business/Income Assets:</strong> ${formatCurrency(q6Mid)}</li>
+              <li><strong>Debts:</strong> ${formatCurrency(q7Mid)}</li>
+            </ul>
+          </div>
+          <p>After consolidating everything, your <strong>Estimated Net Worth is:</strong></p>
+          <p style="font-size: 24px; font-weight: bold; color: #27dc85; text-align: center; margin: 20px 0;">
+            ${formatCurrency(analysisData.netWorth)}
+          </p>
+          <p>This places you in the <span class="highlight">${netWorthBandLabel}</span> category:</p>
+          <ul>
+            <li><strong>Emerging:</strong> You are in the early asset-building stage.</li>
+            <li><strong>Mass Affluent:</strong> You have a growing financial base and expanding opportunities.</li>
+            <li><strong>Affluent:</strong> You have established assets and require structured growth and protection.</li>
+            <li><strong>Private Wealth:</strong> You are at wealth-preservation, governance, and succession planning levels.</li>
+          </ul>
+          <p>This helps us determine the level of sophistication, diversification, and long-term structuring your plan deserves.</p>
+        </div>
+        
+        <div class="section">
+          <h2>3. Your Investment Personality — Your Comfort With Risk</h2>
+          <p>Your answers show that your <strong>Risk Profile is:</strong></p>
+          <p style="font-size: 20px; font-weight: bold; color: #27dc85; margin: 15px 0;">${analysisData.riskProfile}</p>
+          <p><strong>What this means:</strong></p>
+          <ul>
+            <li><strong>Conservative:</strong> You value capital protection and stability above growth.</li>
+            <li><strong>Moderate:</strong> You balance safety with steady returns.</li>
+            <li><strong>Growth:</strong> You are comfortable with calculated swings for higher long-term gains.</li>
+            <li><strong>Aggressive:</strong> You seek strong long-term growth and are comfortable with volatility.</li>
+          </ul>
+          <p>Your Risk Score was <span class="highlight">${analysisData.riskScore}/28</span>, which tells us how you naturally make money decisions — steady, bold, cautious, or growth-minded.</p>
+          <p>This ensures your investments match your personality, not your pressure.</p>
+        </div>
+        
+        <div class="section">
+          <h2>4. Your Goals &amp; Financial Behaviour — What You're Building Toward</h2>
+          <p>From your goal and behaviour assessments:</p>
+          <ul>
+            <li><strong>Primary Goal Selected:</strong> ${q8Label}</li>
+            <li><strong>Your reaction during market dips:</strong> ${q9Label}</li>
+            <li><strong>Comfort with volatility:</strong> ${q10Label}</li>
+            <li><strong>Liquidity need:</strong> ${q14Label}</li>
+          </ul>
+          <p>This shows us:</p>
+          <ul>
+            <li>How disciplined you are</li>
+            <li>How patient your money can be</li>
+            <li>How long your funds can stay invested</li>
+            <li>The best possible strategy to help you win</li>
           </ul>
         </div>
         
-        <div class="content">
-          ${narrative.replace(/\n/g, "<br>")}
+        <div class="section">
+          <h2>5. What We Recommend for You — The Myrtle Pathway</h2>
+          <p>Using your Persona + Risk Profile + Net Worth, your recommended investment path is:</p>
+          <div class="portfolio-box">
+            <p><strong>Recommended Product Set</strong></p>
+            <p style="font-size: 18px; font-weight: bold; color: #27dc85; margin: 10px 0;">${portfolioAllocation}</p>
+          </div>
+          <p>This may include:</p>
+          <ul>
+            <li><strong>Liquidity &amp; Stability:</strong> MyBanc, Thrift Invest</li>
+            <li><strong>Income &amp; Growth:</strong> MyQuest, Income Fund, Invest Mix</li>
+            <li><strong>FX &amp; Global Exposure:</strong> EuroInvest, Dollar Shield</li>
+            <li><strong>Alternative &amp; Legacy Tools:</strong> ESG-Plus, Real Estate Notes, Dignity Portfolios</li>
+            <li><strong>Private Wealth Solutions:</strong> Everyday Family Office™</li>
+          </ul>
+          <p>Each recommendation aligns with your goals, your time horizon, your personality, and your financial reality.</p>
         </div>
         
-        <p style="text-align: center;">
-          <strong>📎 Your personalized Wealth Blueprint PDF is attached to this email.</strong>
-        </p>
+        <div class="section">
+          <h2>6. Sample Portfolio Blueprint — Your Ideal Starting Mix</h2>
+          <p>Here is your <strong>Model Portfolio Allocation</strong>, crafted from global standards and Myrtle's investment framework:</p>
+          <div class="portfolio-box">
+            <p style="font-size: 18px; font-weight: bold; color: #27dc85;">${portfolioAllocation}</p>
+          </div>
+          <p>This gives you:</p>
+          <ul>
+            <li>Stability</li>
+            <li>Predictability</li>
+            <li>Sustainable growth</li>
+            <li>Long-term wealth preservation</li>
+            <li>Exposure that matches your goal and risk profile</li>
+          </ul>
+          <p>Your advisor will fine-tune the final percentages based on your cash flow, timelines, and upcoming financial events.</p>
+        </div>
         
-        <p>Our team is here to help you build a confident, structured, long-term financial future.</p>
+        <div class="section">
+          <h2>7. Your Wealth Story Going Forward</h2>
+          <p>Across all categories — income, net worth, behaviour, goals, and values — your blueprint shows that you are:</p>
+          <p style="font-style: italic; font-size: 16px; color: #555; margin: 15px 0; padding-left: 20px; border-left: 3px solid #27dc85;">
+            ${personaNarrative}
+          </p>
+          <p>Your next step is simple:</p>
+          <p>We help you structure your money to support the life you're building — one that is confident, intentional, and aligned with your long-term aspirations.</p>
+          <p>At Myrtle, our promise is to walk with you — with clarity, structure, dignity, and care.</p>
+        </div>
         
-        <div style="text-align: center; margin: 30px 0;">
-          <p style="margin-bottom: 15px;"><strong>Get Started on Myrtle Portal:</strong></p>
-          <a href="https://myrtle.portal.prod.mywealthcare.io/auth/signup" class="button" style="margin-right: 10px;">Create Account</a>
-          <a href="https://myrtle.portal.prod.mywealthcare.io/auth/signin" class="button" style="background-color: #333; margin-left: 10px;">Sign In</a>
+        <div class="next-steps">
+          <h2 style="margin-top: 0;">🌿 Your Myrtle Advisor Will Now…</h2>
+          <ul>
+            <li>Validate your details</li>
+            <li>Confirm product selection</li>
+            <li>Prepare your onboarding documents</li>
+            <li>Build your personalized portfolio</li>
+            <li>Set up your review cycle</li>
+            <li>Walk you through each step in plain, human, relatable language</li>
+          </ul>
+          <p style="margin-top: 20px; margin-bottom: 0;"><strong>We look forward to being a meaningful partner on your wealth journey.</strong></p>
         </div>
         
         <div class="footer">
           <p>Best regards,<br><strong>The Myrtle Wealth Team</strong></p>
-          <p style="font-size: 12px; color: #999;">
+          <p style="font-size: 12px; color: #999; margin-top: 15px;">
             This email was sent to ${email}. If you have any questions, please contact our support team.
-          </p>
-          <p style="font-size: 12px; color: #999; margin-top: 10px;">
-            <a href="https://myrtle.portal.prod.mywealthcare.io/auth/signup" style="color: #27dc85;">Create Account</a> | 
-            <a href="https://myrtle.portal.prod.mywealthcare.io/auth/signin" style="color: #27dc85;">Sign In</a>
           </p>
         </div>
       </div>
@@ -336,43 +511,12 @@ export async function sendOnboardingEmail(
     </html>
   `;
 
-  // Generate PDF attachment
-  console.log("   📄 Generating PDF for email attachment...");
-  try {
-    const pdfBuffer = await generateWealthBlueprintPDF(
-      narrative,
-      {
-        fullName,
-        email,
-        createdAt: new Date(),
-      },
-      analysisData
-    );
-
-    const pdfFilename = getPDFFilename(fullName, submissionId);
-    console.log(`   ✅ PDF generated: ${pdfFilename} (${pdfBuffer.length} bytes)`);
-
-    return await sendEmail({
-      to: email,
-      subject,
-      html,
-      attachments: [
-        {
-          filename: pdfFilename,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
-      ],
-    });
-  } catch (error: any) {
-    console.error("   ⚠️  Failed to generate PDF, sending email without attachment:", error);
-    // Send email without PDF if generation fails
-    return await sendEmail({
-      to: email,
-      subject,
-      html,
-    });
-  }
+  // Send email without attachment
+  return await sendEmail({
+    to: email,
+    subject,
+    html,
+  });
 }
 
 /**
@@ -380,8 +524,8 @@ export async function sendOnboardingEmail(
  */
 export async function testEmailConfiguration(): Promise<boolean> {
   try {
-    if (process.env.RESEND_API_KEY) {
-      console.log("✅ Email server is ready (Resend API)");
+    if (process.env.PLUNK_API_KEY) {
+      console.log("✅ Email server is ready (Plunk API)");
       return true;
     }
 

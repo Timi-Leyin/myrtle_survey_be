@@ -139,7 +139,8 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
         persona: scoringResult.persona,
         portfolio: scoringResult.portfolio,
       },
-      questionnaire.id
+      questionnaire.id,
+      filteredAnswers
     ).catch((error) => {
       console.error("   ⚠️  Failed to send email (non-critical):", error);
     });
