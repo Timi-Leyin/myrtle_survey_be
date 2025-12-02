@@ -233,11 +233,16 @@ export async function sendOnboardingEmail(
     portfolio: Record<string, any>;
   },
   submissionId: string,
-  answers?: Record<string, string>
+  answers?: Record<string, string | string[]>
 ): Promise<boolean> {
   const subject = "🌿 MYRTLE WEALTH BLUEPRINT™ — Personalized Client Narrative";
   
-  // Calculate midpoints and get labels from answers
+  // Get answer values
+  const q1Income = answers?.Q1 ? getQuestionLabel("Q1", answers.Q1 as string) : "";
+  const q2Stages = answers?.Q2 ? getQuestionLabel("Q2", answers.Q2) : "";
+  const q3Horizon = answers?.Q3 ? getQuestionLabel("Q3", answers.Q3 as string) : "";
+  
+  // Calculate midpoints for net worth display
   const q4Mid = answers?.Q4 ? NETWORTH_MIDPOINTS.Q4[answers.Q4 as keyof typeof NETWORTH_MIDPOINTS.Q4] || 0 : 0;
   const q5Mid = answers?.Q5 ? NETWORTH_MIDPOINTS.Q5[answers.Q5 as keyof typeof NETWORTH_MIDPOINTS.Q5] || 0 : 0;
   const q6Mid = answers?.Q6 ? NETWORTH_MIDPOINTS.Q6[answers.Q6 as keyof typeof NETWORTH_MIDPOINTS.Q6] || 0 : 0;
@@ -245,10 +250,17 @@ export async function sendOnboardingEmail(
   
   const formatCurrency = (value: number) => `₦${value.toLocaleString("en-NG")}`;
   
-  const q8Label = answers?.Q8 ? getQuestionLabel("Q8", answers.Q8) : "";
-  const q9Label = answers?.Q9 ? getQuestionLabel("Q9", answers.Q9) : "";
-  const q10Label = answers?.Q10 ? getQuestionLabel("Q10", answers.Q10) : "";
-  const q14Label = answers?.Q14 ? getQuestionLabel("Q14", answers.Q14) : "";
+  // Get investment goals (multi-select Q8)
+  const q8Goals = answers?.Q8 ? getQuestionLabel("Q8", answers.Q8) : "";
+  const q9Reaction = answers?.Q9 ? getQuestionLabel("Q9", answers.Q9 as string) : "";
+  const q10Comfort = answers?.Q10 ? getQuestionLabel("Q10", answers.Q10 as string) : "";
+  const q14Liquidity = answers?.Q14 ? getQuestionLabel("Q14", answers.Q14 as string) : "";
+  
+  // Get sources of funds (multi-select Q15)
+  const q15Sources = answers?.Q15 ? getQuestionLabel("Q15", answers.Q15) : "";
+  
+  // Get advisor question (Q16)
+  const q16Message = answers?.Q16 ? (answers.Q16 as string) : "";
   
   // Format portfolio allocation
   const portfolioParts: string[] = [];
@@ -375,11 +387,9 @@ export async function sendOnboardingEmail(
           <h2>1. Your Financial Identity — Who You Are Today</h2>
           <p>Based on the information you shared, you fall into the <span class="highlight">${analysisData.persona}</span> segment.</p>
           <p><strong>What this means in simple language:</strong></p>
-          <ul>
-            <li><strong>Everyday Builder:</strong> You are in your foundational building phase — strengthening your income base, forming strong money habits, and preparing for bigger financial moves.</li>
-            <li><strong>Strategic Achiever:</strong> You are in your growth decade — expanding income streams, planning the future with intention, and building wealth structures that must work long-term.</li>
-            <li><strong>Private Wealth Niche:</strong> You manage significant assets and decisions. Your focus is on preservation, legacy, governance, tax efficiency, and intergenerational continuity.</li>
-          </ul>
+          <p style="font-style: italic; font-size: 16px; color: #555; margin: 15px 0; padding-left: 20px; border-left: 3px solid #27dc85;">
+            ${personaNarrative}
+          </p>
           <p>This gives us clarity on how best to serve you and which financial solutions will create the most meaningful impact.</p>
         </div>
         
@@ -427,10 +437,10 @@ export async function sendOnboardingEmail(
           <h2>4. Your Goals &amp; Financial Behaviour — What You're Building Toward</h2>
           <p>From your goal and behaviour assessments:</p>
           <ul>
-            <li><strong>Primary Goal Selected:</strong> ${q8Label}</li>
-            <li><strong>Your reaction during market dips:</strong> ${q9Label}</li>
-            <li><strong>Comfort with volatility:</strong> ${q10Label}</li>
-            <li><strong>Liquidity need:</strong> ${q14Label}</li>
+            ${q8Goals ? `<li><strong>Primary Goals Selected:</strong> ${q8Goals}</li>` : ''}
+            ${q9Reaction ? `<li><strong>Your reaction during market dips:</strong> ${q9Reaction}</li>` : ''}
+            ${q10Comfort ? `<li><strong>Comfort with volatility:</strong> ${q10Comfort}</li>` : ''}
+            ${q14Liquidity ? `<li><strong>Liquidity need:</strong> ${q14Liquidity}</li>` : ''}
           </ul>
           <p>This shows us:</p>
           <ul>
@@ -443,18 +453,12 @@ export async function sendOnboardingEmail(
         
         <div class="section">
           <h2>5. What We Recommend for You — The Myrtle Pathway</h2>
-          <p>Using your Persona + Risk Profile + Net Worth, your recommended investment path is:</p>
-          <div class="portfolio-box">
-            <p><strong>Recommended Product Set</strong></p>
-            <p style="font-size: 18px; font-weight: bold; color: #27dc85; margin: 10px 0;">${portfolioAllocation}</p>
-          </div>
-          <p>This may include:</p>
+          <p>Using your Persona + Risk Profile + Net Worth, your recommended investment path includes:</p>
           <ul>
-            <li><strong>Liquidity &amp; Stability:</strong> MyBanc, Thrift Invest</li>
-            <li><strong>Income &amp; Growth:</strong> MyQuest, Income Fund, Invest Mix</li>
-            <li><strong>FX &amp; Global Exposure:</strong> EuroInvest, Dollar Shield</li>
-            <li><strong>Alternative &amp; Legacy Tools:</strong> ESG-Plus, Real Estate Notes, Dignity Portfolios</li>
-            <li><strong>Private Wealth Solutions:</strong> Everyday Family Office™</li>
+            <li><strong>Money Market (Capital Preservation &amp; Liquidity):</strong> Myrtle Nest (MyNest Money Market Fund)</li>
+            <li><strong>Fixed Income (Steady Income):</strong> Myrtle Fixed Income Plus, Myrtle Treasury Notes</li>
+            <li><strong>Balanced Growth:</strong> Myrtle Balanced Plus Fund, Myrtle WealthBlend</li>
+            <li><strong>FX Protection (USD Exposure):</strong> Myrtle Dollar Shield Fund</li>
           </ul>
           <p>Each recommendation aligns with your goals, your time horizon, your personality, and your financial reality.</p>
         </div>
@@ -486,6 +490,26 @@ export async function sendOnboardingEmail(
           <p>We help you structure your money to support the life you're building — one that is confident, intentional, and aligned with your long-term aspirations.</p>
           <p>At Myrtle, our promise is to walk with you — with clarity, structure, dignity, and care.</p>
         </div>
+        
+        ${q15Sources ? `
+        <div class="section">
+          <h2>8. Sources of Funds</h2>
+          <p>You indicated your investment funds come from:</p>
+          <p style="font-size: 16px; color: #555; margin: 15px 0; padding-left: 20px; border-left: 3px solid #27dc85;">
+            ${q15Sources}
+          </p>
+        </div>
+        ` : ''}
+        
+        ${q16Message ? `
+        <div class="section">
+          <h2>9. Your Message to Your Advisor</h2>
+          <p style="font-style: italic; font-size: 16px; color: #555; margin: 15px 0; padding: 20px; background-color: #f9f9f9; border-radius: 6px;">
+            "${q16Message}"
+          </p>
+          <p>We hear you, and we'll take this into account as we craft your personalized wealth plan.</p>
+        </div>
+        ` : ''}
         
         <div class="next-steps">
           <h2 style="margin-top: 0;">🌿 Your Myrtle Advisor Will Now…</h2>

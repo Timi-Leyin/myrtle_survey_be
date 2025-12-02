@@ -12,8 +12,23 @@ import {
 
 const router = Router();
 
-// Validation schemas
-const answerSchema = z.enum(["A", "B", "C", "D"]);
+// Validation schemas (single- and multi-select)
+const AtoD = z.enum(["A", "B", "C", "D"]);
+const AtoE = z.enum(["A", "B", "C", "D", "E"]);
+const AtoF = z.enum(["A", "B", "C", "D", "E", "F"]);
+
+const STG = z.enum(["STG1", "STG2", "STG3", "STG4", "STG5", "STG6"]);
+const GOALS = z.enum(["T1", "T2", "T3", "T4", "T5", "T6", "T7"]);
+const SOURCES = z.enum([
+  "SRC1",
+  "SRC2",
+  "SRC3",
+  "SRC4",
+  "SRC5",
+  "SRC6",
+  "SRC7",
+  "SRC8",
+]);
 
 const submitQuestionnaireSchema = z.object({
   body: z.object({
@@ -33,23 +48,29 @@ const submitQuestionnaireSchema = z.object({
       return val;
     }),
     // Questionnaire Answers
-    answers: z.object({
-      Q1: answerSchema,
-      Q2: answerSchema,
-      Q3: answerSchema,
-      Q4: answerSchema,
-      Q5: answerSchema,
-      Q6: answerSchema,
-      Q7: answerSchema,
-      Q8: answerSchema,
-      Q9: answerSchema,
-      Q10: answerSchema,
-      Q11: answerSchema,
-      Q12: answerSchema,
-      Q13: answerSchema,
-      Q14: answerSchema,
-      Q15: z.string().optional(), // Source of funds (text field)
-    }),
+    answers: z
+      .object({
+        // Single-select
+        Q1: AtoF,
+        Q3: AtoD,
+        Q4: AtoE,
+        Q5: AtoE,
+        Q6: AtoE,
+        Q7: AtoE,
+        Q9: AtoD,
+        Q10: AtoD,
+        Q11: AtoD,
+        Q12: AtoD,
+        Q13: AtoD,
+        Q14: AtoD,
+        // Multi-select
+        Q2: z.array(STG).nonempty(),
+        Q8: z.array(GOALS).nonempty(),
+        Q15: z.array(SOURCES).optional(),
+        // Open text (optional)
+        Q16: z.string().optional(),
+      })
+      .strict(),
     advisorQuestion: z.string().optional(), // Optional advisor question
   }),
 });

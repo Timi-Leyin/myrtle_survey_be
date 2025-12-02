@@ -20,7 +20,7 @@ export interface ScoringResult {
 /**
  * Calculate all scores from questionnaire answers
  */
-export function calculateScores(answers: Record<string, string>): ScoringResult {
+export function calculateScores(answers: Record<string, string | string[]>): ScoringResult {
   // Calculate net worth
   const netWorth = calculateNetWorth(answers);
   const netWorthBandInfo = getNetWorthBand(netWorth);

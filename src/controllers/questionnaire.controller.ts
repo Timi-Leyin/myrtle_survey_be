@@ -33,7 +33,7 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
     console.log(`   User: ${fullName} (${email})`);
     console.log(`   Answers received: ${Object.keys(answers || {}).length} questions`);
 
-    // Validate that all required questions are answered (only Q1-Q14)
+    // Validate that all required questions are answered (Q1-Q14)
     const requiredQuestions = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q12", "Q13", "Q14"];
     const missingQuestions = requiredQuestions.filter((q) => !answers[q]);
 
@@ -45,40 +45,53 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
       return;
     }
 
-    // Filter scoring questions (Q1-Q14) - Q15 is stored but not scored
-    const filteredAnswers: Record<string, string> = {};
-    requiredQuestions.forEach((q) => {
-      if (answers[q]) {
-        filteredAnswers[q] = answers[q];
-      }
-    });
+    // Multi-select questions (should be arrays)
+    const multiSelectQuestions = ["Q2", "Q8", "Q15"];
+    
+    // Single-select questions (should be strings with A-F format)
+    const singleSelectQuestions = ["Q1", "Q3", "Q4", "Q5", "Q6", "Q7", "Q9", "Q10", "Q11", "Q12", "Q13", "Q14"];
 
-    // Build complete answers object including Q15 and advisorQuestion for storage
-    const allAnswers: Record<string, any> = { ...filteredAnswers };
-    if (answers.Q15) {
-      allAnswers.Q15 = answers.Q15; // Source of funds (text)
+    // Build complete answers object
+    const allAnswers: Record<string, any> = { ...answers };
+    
+    // Validate Q16 (open text) and advisorQuestion
+    if (answers.Q16) {
+      allAnswers.Q16 = answers.Q16;
     }
     if (advisorQuestion) {
-      allAnswers.advisorQuestion = advisorQuestion; // Optional advisor question
+      allAnswers.advisorQuestion = advisorQuestion;
     }
 
-    // Validate answer format (A, B, C, or D) - only for Q1-Q14
-    const validAnswers = ["A", "B", "C", "D"];
-    const invalidAnswers = Object.entries(filteredAnswers).filter(
-      ([_, value]) => !validAnswers.includes(value as string)
-    );
+    // Validate single-select answers (A-F format)
+    const validSingleAnswers = ["A", "B", "C", "D", "E", "F"];
+    for (const question of singleSelectQuestions) {
+      const answer = allAnswers[question];
+      if (answer && !validSingleAnswers.includes(answer as string)) {
+        res.status(400).json({
+          success: false,
+          message: `Validation error: Invalid answer format for ${question}. Must be A, B, C, D, E, or F`,
+        });
+        return;
+      }
+    }
 
-    if (invalidAnswers.length > 0) {
-      res.status(400).json({
-        success: false,
-        message: `Validation error: Invalid answer format for ${invalidAnswers.map(([q]) => q).join(", ")}. Must be A, B, C, or D`,
-      });
-      return;
+    // Validate multi-select answers (arrays of codes)
+    for (const question of multiSelectQuestions) {
+      const answer = allAnswers[question];
+      if (answer && question !== "Q15") { // Q15 is optional
+        if (!Array.isArray(answer) || answer.length === 0) {
+          res.status(400).json({
+            success: false,
+            message: `Validation error: ${question} must be an array with at least one selection`,
+          });
+          return;
+        }
+      }
     }
 
     // Calculate scores (using filtered answers)
     console.log("   Calculating scores...");
-    const scoringResult = calculateScores(filteredAnswers);
+    const scoringResult = calculateScores(allAnswers);
     console.log(`   ✅ Net Worth: ₦${scoringResult.netWorth.toLocaleString()}`);
     console.log(`   ✅ Net Worth Band: ${scoringResult.netWorthBand}`);
     console.log(`   ✅ Risk Score: ${scoringResult.riskScore}/28`);
@@ -140,7 +153,7 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
         portfolio: scoringResult.portfolio,
       },
       questionnaire.id,
-      filteredAnswers
+      allAnswers
     ).catch((error) => {
       console.error("   ⚠️  Failed to send email (non-critical):", error);
     });

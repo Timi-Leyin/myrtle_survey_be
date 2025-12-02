@@ -100,14 +100,22 @@ const swaggerOptions = {
         QuestionnaireAnswers: {
           type: "object",
           properties: {
-            Q1: { type: "string", enum: ["A", "B", "C", "D"] },
-            Q2: { type: "string", enum: ["A", "B", "C", "D"] },
+            Q1: { type: "string", enum: ["A", "B", "C", "D", "E", "F"] },
+            Q2: {
+              type: "array",
+              items: { type: "string", enum: ["STG1", "STG2", "STG3", "STG4", "STG5", "STG6"] },
+              minItems: 1
+            },
             Q3: { type: "string", enum: ["A", "B", "C", "D"] },
-            Q4: { type: "string", enum: ["A", "B", "C", "D"] },
-            Q5: { type: "string", enum: ["A", "B", "C", "D"] },
-            Q6: { type: "string", enum: ["A", "B", "C", "D"] },
-            Q7: { type: "string", enum: ["A", "B", "C", "D"] },
-            Q8: { type: "string", enum: ["A", "B", "C", "D"] },
+            Q4: { type: "string", enum: ["A", "B", "C", "D", "E"] },
+            Q5: { type: "string", enum: ["A", "B", "C", "D", "E"] },
+            Q6: { type: "string", enum: ["A", "B", "C", "D", "E"] },
+            Q7: { type: "string", enum: ["A", "B", "C", "D", "E"] },
+            Q8: {
+              type: "array",
+              items: { type: "string", enum: ["T1", "T2", "T3", "T4", "T5", "T6", "T7"] },
+              minItems: 1
+            },
             Q9: { type: "string", enum: ["A", "B", "C", "D"] },
             Q10: { type: "string", enum: ["A", "B", "C", "D"] },
             Q11: { type: "string", enum: ["A", "B", "C", "D"] },
@@ -115,13 +123,11 @@ const swaggerOptions = {
             Q13: { type: "string", enum: ["A", "B", "C", "D"] },
             Q14: { type: "string", enum: ["A", "B", "C", "D"] },
             Q15: {
-              type: "string",
-              description: "Source of funds (optional text field)",
+              type: "array",
+              items: { type: "string", enum: ["SRC1", "SRC2", "SRC3", "SRC4", "SRC5", "SRC6", "SRC7", "SRC8"] },
+              description: "Sources of funds (optional)",
             },
-            advisorQuestion: {
-              type: "string",
-              description: "Optional advisor question (text field)",
-            },
+            Q16: { type: "string", description: "Message to Advisor (optional)" },
           },
           required: [
             "Q1",
@@ -146,14 +152,16 @@ const swaggerOptions = {
   apis: ["./src/routes/*.ts"],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// Generate swagger spec
+const swaggerSpec: any = swaggerJsdoc(swaggerOptions);
 
 // Routes
 app.use("/api/questionnaire", questionnaireRoutes);
 app.use("/api/admin", adminRoutes);
 
-// Swagger documentation
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+const swaggerServe: any = swaggerUi.serve;
+const swaggerSetup: any = swaggerUi.setup(swaggerSpec);
+app.use("/docs", swaggerServe, swaggerSetup);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
