@@ -233,7 +233,8 @@ export async function sendOnboardingEmail(
     portfolio: Record<string, any>;
   },
   submissionId: string,
-  answers?: Record<string, string | string[]>
+  answers?: Record<string, string | string[]>,
+  narrativeData?: any
 ): Promise<boolean> {
   const subject = "🌿 MYRTLE WEALTH BLUEPRINT™ — Personalized Client Narrative";
   
@@ -276,6 +277,28 @@ export async function sendOnboardingEmail(
   
   // Get persona narrative
   const personaNarrative = getPersonaNarrative(analysisData.persona);
+  
+  // Helper function to get only the relevant risk profile meaning
+  const getRiskProfileMeaning = (profile: string): string => {
+    const meanings: Record<string, string> = {
+      CONSERVATIVE: "You prefer stability and protection above aggressive growth. Your strategy prioritizes security and predictable returns.",
+      MODERATE: "You value balance — steady returns with measured exposure to growth opportunities.",
+      GROWTH: "You are comfortable with calculated swings because you have a long-term mindset and seek meaningful expansion.",
+      AGGRESSIVE: "You think in decades, not days. You embrace volatility in pursuit of strong long-term returns."
+    };
+    return meanings[profile.toUpperCase()] || "";
+  };
+  
+  // Helper function to get only the relevant net worth band meaning
+  const getNetWorthBandMeaning = (band: string): string => {
+    const meanings: Record<string, string> = {
+      EMERGING: "You are in the early wealth-building phase. Your current structure focuses on stability and growth foundations.",
+      "MASS AFFLUENT": "You have a growing financial base and expanding opportunities. With structure, your net worth can scale rapidly.",
+      AFFLUENT: "You have established assets and are now in a stage that requires thoughtful diversification, risk-managed growth, and early legacy planning.",
+      "PRIVATE WEALTH": "You are operating at a governance and preservation level. Your plan prioritizes multi-asset strategy, global diversification, security, and intergenerational wealth."
+    };
+    return meanings[band.toUpperCase()] || "";
+  };
   
   const html = `
     <!DOCTYPE html>
@@ -408,14 +431,10 @@ export async function sendOnboardingEmail(
           <p style="font-size: 24px; font-weight: bold; color: #27dc85; text-align: center; margin: 20px 0;">
             ${formatCurrency(analysisData.netWorth)}
           </p>
-          <p>This places you in the <span class="highlight">${netWorthBandLabel}</span> category:</p>
-          <ul>
-            <li><strong>Emerging:</strong> You are in the early asset-building stage.</li>
-            <li><strong>Mass Affluent:</strong> You have a growing financial base and expanding opportunities.</li>
-            <li><strong>Affluent:</strong> You have established assets and require structured growth and protection.</li>
-            <li><strong>Private Wealth:</strong> You are at wealth-preservation, governance, and succession planning levels.</li>
-          </ul>
-          <p>This helps us determine the level of sophistication, diversification, and long-term structuring your plan deserves.</p>
+          <p>This places you in the <span class="highlight">${netWorthBandLabel}</span> category.</p>
+          <p><strong>What this means:</strong></p>
+          <p>${getNetWorthBandMeaning(netWorthBandLabel)}</p>
+          <p>Net worth assessment helps us understand your financial capacity, your liquidity needs, and the type of structures best suited for your long-term prosperity.</p>
         </div>
         
         <div class="section">
@@ -423,14 +442,9 @@ export async function sendOnboardingEmail(
           <p>Your answers show that your <strong>Risk Profile is:</strong></p>
           <p style="font-size: 20px; font-weight: bold; color: #27dc85; margin: 15px 0;">${analysisData.riskProfile}</p>
           <p><strong>What this means:</strong></p>
-          <ul>
-            <li><strong>Conservative:</strong> You value capital protection and stability above growth.</li>
-            <li><strong>Moderate:</strong> You balance safety with steady returns.</li>
-            <li><strong>Growth:</strong> You are comfortable with calculated swings for higher long-term gains.</li>
-            <li><strong>Aggressive:</strong> You seek strong long-term growth and are comfortable with volatility.</li>
-          </ul>
-          <p>Your Risk Score was <span class="highlight">${analysisData.riskScore}/28</span>, which tells us how you naturally make money decisions — steady, bold, cautious, or growth-minded.</p>
-          <p>This ensures your investments match your personality, not your pressure.</p>
+          <p>${getRiskProfileMeaning(analysisData.riskProfile)}</p>
+          <p>Your Risk Score was <span class="highlight">${analysisData.riskScore}/28</span>, which tells us how you naturally make money decisions.</p>
+          <p>This tells us how you naturally make financial decisions and ensures your portfolio aligns with your temperament, not pressure or uncertainty.</p>
         </div>
         
         <div class="section">
@@ -455,10 +469,10 @@ export async function sendOnboardingEmail(
           <h2>5. What We Recommend for You — The Myrtle Pathway</h2>
           <p>Using your Persona + Risk Profile + Net Worth, your recommended investment path includes:</p>
           <ul>
-            <li><strong>Money Market (Capital Preservation &amp; Liquidity):</strong> Myrtle Nest (MyNest Money Market Fund)</li>
-            <li><strong>Fixed Income (Steady Income):</strong> Myrtle Fixed Income Plus, Myrtle Treasury Notes</li>
-            <li><strong>Balanced Growth:</strong> Myrtle Balanced Plus Fund, Myrtle WealthBlend</li>
-            <li><strong>FX Protection (USD Exposure):</strong> Myrtle Dollar Shield Fund</li>
+            <li><strong>Money Market:</strong> Myrtle Nest</li>
+            <li><strong>Fixed Income:</strong> Myrtle Fixed Income Plus, Myrtle Treasury Notes</li>
+            <li><strong>Balanced Growth:</strong> Myrtle Balanced Plus, Myrtle WealthBlend</li>
+            <li><strong>FX Protection:</strong> Myrtle Dollar Shield</li>
           </ul>
           <p>Each recommendation aligns with your goals, your time horizon, your personality, and your financial reality.</p>
         </div>

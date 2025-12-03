@@ -1,0 +1,197 @@
+{
+  "template_name": "Myrtle_Wealth_Blueprint",
+  "version": "2025-12-02.v1",
+  "description": "Dynamic narrative template for generating personalized Myrtle Wealth Blueprints from CRM variables.",
+  "sections": [
+    {
+      "id": "financial_identity",
+      "title": "Your Financial Identity — Who You Are Today",
+      "variables": [
+        "persona"
+      ],
+      "classification_var": "persona",
+      "classification_label": "{persona}",
+      "options": {
+        "EVERYDAY_BUILDER": {
+          "simple_meaning": "You are establishing your financial foundation — building stability, developing strong money habits, and creating the structures that support long-term confidence."
+        },
+        "STRATEGIC_ACHIEVER": {
+          "simple_meaning": "You are actively expanding your wealth through diversified investments, income growth strategies, and forward-looking financial planning."
+        },
+        "PRIVATE_WEALTH_NICHE": {
+          "simple_meaning": "You oversee significant assets and decisions. Your priority is wealth preservation, strategic growth, governance, and multi-generational continuity."
+        }
+      },
+      "purpose_text": "This section helps us understand where you are on your financial journey so we can recommend solutions that match your lifestyle, goals, capacity, and long-term aspirations."
+    },
+    {
+      "id": "net_worth",
+      "title": "Your Net Worth Position — A Clear Picture",
+      "variables": [
+        "cash_mid",
+        "real_estate_mid",
+        "business_mid",
+        "debt_mid",
+        "net_worth_calc",
+        "net_worth_band"
+      ],
+      "inputs_block": {
+        "cash": "₦{cash_mid}",
+        "real_estate": "₦{real_estate_mid}",
+        "business": "₦{business_mid}",
+        "debts": "₦{debt_mid}"
+      },
+      "calculated_value_text": "₦{net_worth_calc}",
+      "classification_var": "net_worth_band",
+      "options": {
+        "NW1": {
+          "label": "Emerging",
+          "simple_meaning": "You are in the early wealth-building phase. Your current structure focuses on stability and growth foundations."
+        },
+        "NW2": {
+          "label": "Mass Affluent",
+          "simple_meaning": "You have a growing financial base and expanding opportunities. With structure, your net worth can scale rapidly."
+        },
+        "NW3": {
+          "label": "Affluent",
+          "simple_meaning": "You have established assets and are now in a stage that requires thoughtful diversification, risk-managed growth, and early legacy planning."
+        },
+        "NW4": {
+          "label": "Private Wealth",
+          "simple_meaning": "You are operating at a governance and preservation level. Your plan prioritizes multi-asset strategy, global diversification, security, and intergenerational wealth."
+        }
+      },
+      "purpose_text": "Net worth assessment helps us understand your financial capacity, your liquidity needs, and the type of structures best suited for your long-term prosperity."
+    },
+    {
+      "id": "risk_profile",
+      "title": "Your Investment Personality — Your Comfort With Risk",
+      "variables": [
+        "risk_profile",
+        "risk_score"
+      ],
+      "classification_var": "risk_profile",
+      "risk_score_text": "{risk_score}/28",
+      "options": {
+        "CONSERVATIVE": {
+          "simple_meaning": "You prefer stability and protection above aggressive growth. Your strategy prioritizes security and predictable returns."
+        },
+        "MODERATE": {
+          "simple_meaning": "You value balance — steady returns with measured exposure to growth opportunities."
+        },
+        "GROWTH": {
+          "simple_meaning": "You are comfortable with calculated swings because you have a long-term mindset and seek meaningful expansion."
+        },
+        "AGGRESSIVE": {
+          "simple_meaning": "You think in decades, not days. You embrace volatility in pursuit of strong long-term returns."
+        }
+      },
+      "purpose_text": "This tells us how you naturally make financial decisions and ensures your portfolio aligns with your temperament, not pressure or uncertainty."
+    },
+    {
+      "id": "goals_behaviour",
+      "title": "Your Goals & Financial Behaviour — What You’re Building Toward",
+      "variables": [
+        "goals_selected",
+        "reaction_dips",
+        "volatility_comfort",
+        "liquidity_need"
+      ],
+      "goals_text": "{goals_selected_list}",
+      "behaviour_explanations": {
+        "reaction_dips": {
+          "BUY_MORE": "You see dips as opportunity — a strategic long-term thinker.",
+          "STAY_INVESTED": "You remain calm during fluctuations — a disciplined investor.",
+          "REDUCE_EXPOSURE": "You prefer to manage downside carefully.",
+          "EXIT": "You value capital safety and want minimum turbulence."
+        },
+        "volatility_comfort": {
+          "VERY_COMFORTABLE": "You’re unfazed by swings; you trust long-term outcomes.",
+          "MODERATE": "You accept volatility as part of growth.",
+          "SLIGHTLY_UNCOMFORTABLE": "You prefer managed volatility and stable progression.",
+          "NOT_COMFORTABLE": "You want minimal fluctuation and steady results."
+        },
+        "liquidity_need": {
+          "VERY_HIGH": "We prioritise flexible, low-lock instruments for you.",
+          "MODERATE": "Your plan can tolerate structured liquidity intervals.",
+          "LOW": "Your funds can work for you over longer cycles.",
+          "NONE": "Your horizon allows for maximum long-term strategy."
+        }
+      },
+      "purpose_text": "These behavioural insights help us design a portfolio you can stay consistent with — not just one that looks good on paper."
+    },
+    {
+      "id": "recommendations",
+      "title": "What We Recommend for You — The Myrtle Pathway",
+      "variables": [
+        "persona",
+        "risk_profile",
+        "net_worth_band",
+        "recommended_products_list"
+      ],
+      "classification_summary_text": "{persona} • {risk_profile} • {net_worth_band_label}",
+      "recommended_products_text": "{recommended_products_list}",
+      "persona_risk_path_narratives": {
+        "EVERYDAY_BUILDER_CONSERVATIVE_MODERATE": "Your pathway focuses on stability, habit formation, and long-term discipline.",
+        "STRATEGIC_ACHIEVER_GROWTH": "Your pathway supports expansion, intentional risk-taking, and global diversification.",
+        "PRIVATE_WEALTH_NICHE_AGGRESSIVE": "Your pathway blends sophisticated multi-asset strategies with preservation and legacy transition planning."
+      },
+      "purpose_text": "These recommendations align your goals, capacity, temperament, and long-term vision into a focused investment pathway."
+    },
+    {
+      "id": "portfolio_blueprint",
+      "title": "Sample Portfolio Blueprint — Your Ideal Starting Mix",
+      "variables": [
+        "portfolio_mix",
+        "risk_profile"
+      ],
+      "portfolio_mix_text": "{portfolio_mix}",
+      "profile_explanations": {
+        "CONSERVATIVE": "Your funds are positioned for maximum stability and minimal volatility.",
+        "MODERATE": "You have a balanced structure — steady returns with sustainable growth.",
+        "GROWTH": "Your portfolio leans into long-term expansion with calculated exposure.",
+        "AGGRESSIVE": "You hold a high-growth posture optimised for long-term wealth accumulation."
+      },
+      "purpose_text": "This visual blueprint shows how your wealth is best positioned today, grounded in global standards and Myrtle’s disciplined investment philosophy."
+    },
+    {
+      "id": "wealth_story",
+      "title": "Your Wealth Story — Going Forward",
+      "variables": [
+        "persona_narrative_insert"
+      ],
+      "summary_text": "{persona_narrative_insert}",
+      "purpose_text": "This helps you see where you are, where you’re going, and how we’ll walk this journey with you — with clarity, structure, dignity, and care."
+    },
+    {
+      "id": "sources_of_funds",
+      "title": "Sources of Funds",
+      "variables": [
+        "sources_of_funds"
+      ],
+      "sources_text": "{sources_of_funds_list}",
+      "purpose_text": "This helps us understand how your wealth is generated and ensures your plan aligns with both regulatory expectations and your financial reality."
+    },
+    {
+      "id": "client_message",
+      "title": "Your Message to Your Advisor",
+      "variables": [
+        "client_message"
+      ],
+      "message_text": "\"{client_message}\"",
+      "purpose_text": "We hear you clearly and will integrate this into your structured wealth plan."
+    },
+    {
+      "id": "advisor_actions",
+      "title": "Your Myrtle Advisor Will Now…",
+      "static_actions": [
+        "Validate your details",
+        "Confirm product selection",
+        "Prepare your onboarding documents",
+        "Build your personalized portfolio",
+        "Set up your review cycle",
+        "Walk you through each step in plain, human language"
+      ]
+    }
+  ]
+}

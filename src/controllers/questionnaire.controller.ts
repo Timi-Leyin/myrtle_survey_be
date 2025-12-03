@@ -100,14 +100,34 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
 
     // Generate narrative
     console.log("   Generating narrative...");
-    const narrative = generateNarrative({
+    
+    // Prepare extended narrative data
+    const { NETWORTH_MIDPOINTS } = require("../utils/networth.config");
+    const { getQuestionLabel } = require("../utils/question-labels");
+    
+    const narrativeData = {
       persona: scoringResult.persona,
       netWorth: scoringResult.netWorth,
       netWorthBand: scoringResult.netWorthBand,
       riskScore: scoringResult.riskScore,
       riskProfile: scoringResult.riskProfile,
       portfolio: scoringResult.portfolio,
-    });
+      // Net worth midpoints
+      cash_mid: allAnswers.Q4 ? NETWORTH_MIDPOINTS.Q4[allAnswers.Q4 as keyof typeof NETWORTH_MIDPOINTS.Q4] : undefined,
+      real_estate_mid: allAnswers.Q5 ? NETWORTH_MIDPOINTS.Q5[allAnswers.Q5 as keyof typeof NETWORTH_MIDPOINTS.Q5] : undefined,
+      business_mid: allAnswers.Q6 ? NETWORTH_MIDPOINTS.Q6[allAnswers.Q6 as keyof typeof NETWORTH_MIDPOINTS.Q6] : undefined,
+      debt_mid: allAnswers.Q7 ? NETWORTH_MIDPOINTS.Q7[allAnswers.Q7 as keyof typeof NETWORTH_MIDPOINTS.Q7] : undefined,
+      // Goals and sources
+      goals_selected_list: allAnswers.Q8 ? getQuestionLabel("Q8", allAnswers.Q8) : undefined,
+      sources_of_funds_list: allAnswers.Q15 ? getQuestionLabel("Q15", allAnswers.Q15) : undefined,
+      client_message: allAnswers.Q16 || undefined,
+      // Behaviour
+      reaction_dips: allAnswers.Q9 ? allAnswers.Q9.toUpperCase().replace("A", "BUY_MORE").replace("B", "STAY_INVESTED").replace("C", "REDUCE_EXPOSURE").replace("D", "EXIT") : undefined,
+      volatility_comfort: allAnswers.Q10 ? allAnswers.Q10.toUpperCase().replace("A", "VERY_COMFORTABLE").replace("B", "MODERATE").replace("C", "SLIGHTLY_UNCOMFORTABLE").replace("D", "NOT_COMFORTABLE") : undefined,
+      liquidity_need: allAnswers.Q14 ? allAnswers.Q14.toUpperCase().replace("A", "VERY_HIGH").replace("B", "MODERATE").replace("C", "LOW").replace("D", "NONE") : undefined,
+    };
+    
+    const narrative = generateNarrative(narrativeData);
 
     // Save to database
     console.log("   Saving questionnaire to database...");
@@ -153,7 +173,8 @@ export async function submitQuestionnaire(req: Request, res: Response): Promise<
         portfolio: scoringResult.portfolio,
       },
       questionnaire.id,
-      allAnswers
+      allAnswers,
+      narrativeData
     ).catch((error) => {
       console.error("   ⚠️  Failed to send email (non-critical):", error);
     });
